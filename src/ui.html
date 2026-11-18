@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bobo Plan2BOQ — แบบ → 3D → ถอดแบบ → BOQ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<style>
+:root{--bg:#f4f1ea;--paper:#fffdf8;--ink:#1f2a33;--mut:#6b7680;--line:#d9d2c3;--acc:#c2410c;--acc2:#0f766e;--blue:#1d6fd6;--ok:#15803d;--bad:#b91c1c;--r:10px}
+@media (prefers-color-scheme:dark){:root{--bg:#141619;--paper:#1c1f23;--ink:#e8e4da;--mut:#9aa3ab;--line:#33383e;--acc:#f97316;--acc2:#2dd4bf;--blue:#60a5fa;--ok:#4ade80;--bad:#f87171}}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 'IBM Plex Sans Thai',system-ui,sans-serif}
+.mono,td.n,input[type=number]{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+header{padding:18px 16px 10px;border-bottom:1px solid var(--line);background:var(--paper)}
+h1{font-size:20px;margin:0}h1 b{color:var(--acc)}header p{margin:4px 0 0;color:var(--mut);font-size:13px}
+.flow{display:flex;gap:6px;overflow-x:auto;padding:10px 16px;background:var(--paper);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.chip{flex:0 0 auto;padding:5px 10px;border:1px solid var(--line);border-radius:99px;font-size:12px;color:var(--mut);background:var(--bg);cursor:pointer;white-space:nowrap}
+.chip.done{border-color:var(--acc2);color:var(--acc2)}.chip.run{border-color:var(--acc);color:var(--acc)}
+main{max-width:1180px;margin:0 auto;padding:12px}
+section{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin:12px 0}
+h2{font-size:16px;margin:0 0 10px;display:flex;gap:8px;align-items:baseline}h2 small{color:var(--mut);font-weight:400;font-size:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+label{display:flex;flex-direction:column;font-size:12px;color:var(--mut);gap:3px}
+input,select{font:inherit;font-size:14px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+button{font:inherit;font-size:14px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+button.pri{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}button:disabled{opacity:.5}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:16px;text-align:center;color:var(--mut)}
+.log{font:12px/1.55 'IBM Plex Mono',monospace;background:var(--bg);border-radius:8px;padding:10px;max-height:220px;overflow:auto;white-space:pre-wrap}
+.log .s{color:var(--acc2)}.log .w{color:var(--acc)}.log .e{color:var(--bad)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.card{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--bg)}.card b{display:block;font:600 20px 'IBM Plex Mono',monospace}.card span{font-size:12px;color:var(--mut)}
+.two{display:grid;grid-template-columns:1fr;gap:12px}@media(min-width:900px){.two{grid-template-columns:1fr 1fr}}
+canvas#c2d{width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;touch-action:manipulation}
+#v3d{width:100%;height:440px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#0f1418}
+.tbl{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:5px 6px;text-align:left;vertical-align:top}
+th{background:var(--bg);font-weight:600;position:sticky;top:0}td.n,th.n{text-align:right;white-space:nowrap}tr.cat td{background:var(--bg);font-weight:700}tr.sub td{font-weight:600}tr.grand td{font-weight:700;color:var(--acc);border-top:2px solid var(--acc)}
+td input{width:90px;padding:3px 5px;text-align:right}
+#boq{min-width:900px}#boq td:nth-child(2){min-width:190px}
+.sheet{border-left:3px solid var(--acc2);padding:4px 10px;margin:8px 0}.sheet h3{font-size:14px;margin:0 0 4px}.sheet div{font:12.5px/1.6 'IBM Plex Mono',monospace;white-space:pre-wrap}
+.pass{color:var(--ok);font-weight:600}.fail{color:var(--bad);font-weight:600}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mut)}.legend i{display:inline-block;width:14px;height:4px;margin-right:4px;vertical-align:middle}
+.note{font-size:12px;color:var(--mut)}.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:8px;font-size:13px;display:none;z-index:9}
+textarea{width:100%;height:120px;font:12px 'IBM Plex Mono',monospace;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px}
+</style>
+</head>
+<body>
+<header>
+  <h1><b>Bobo</b> Plan2BOQ</h1>
+  <p>รูปภาพ / PDF / DXF → วิเคราะห์ผนัง-ช่องเปิด-ห้อง → โครง คสล. เบื้องต้น (ACI 318-19) → โมเดล 3D → ถอดปริมาณ (QTO) → BOQ ไทย 5 หมวด · หน่วย cm, kgf, ksc</p>
+</header>
+<nav class="flow" id="flow">
+  <span class="chip" data-s="in">① นำเข้าแบบ</span><span class="chip" data-s="an">② วิเคราะห์แบบ</span><span class="chip" data-s="st">③ โครงสร้าง+คำนวณ</span>
+  <span class="chip" data-s="m3">④ โมเดล 3D</span><span class="chip" data-s="qt">⑤ ถอดแบบ QTO</span><span class="chip" data-s="bq">⑥ BOQ</span>
+</nav>
+<main>
+<section id="sec-in">
+  <h2>① นำเข้าแบบ <small>PNG/JPG (ภาพถ่าย/สแกน/สเก็ตช์), PDF หน้าแรก, DXF · DWG ให้แปลงเป็น DXF ก่อน</small></h2>
+  <div class="drop" id="drop">ลากไฟล์มาวางที่นี่ หรือ <input type="file" id="file" accept="image/*,.pdf,.dxf,.dwg" style="width:auto"></div>
+  <div class="row" style="margin-top:10px"><span class="note">ทดลองด้วยแบบจาก internet:</span>
+    <button data-sample="cad">แปลน CAD (FloorplanToBlender3d)</button>
+    <button data-sample="sketch">ภาพถ่ายสเก็ตช์มือ (FloorplanToBlender3d)</button>
+    <button data-sample="dxf">DXF โรงงาน (DXF_To_Revit)</button></div>
+  <div class="grid" style="margin-top:12px">
+    <label>ความกว้างรวมแนวนอนของแบบ (m) <input type="number" id="pW" step="0.1" value="10"></label>
+    <label>หน่วย DXF <select id="pU"><option value="auto">auto</option><option>mm</option><option>cm</option><option>m</option><option>ft</option></select></label>
+    <label>ความหนาผนัง DXF (m) <input type="number" id="pT" step="0.01" value="0.20"></label>
+    <label>จำนวนชั้น <input type="number" id="pN" min="1" max="10" value="2"></label>
+    <label>ความสูงชั้น Hs (m) <input type="number" id="pH" step="0.1" value="3.0"></label>
+    <label>ช่วงเสาสูงสุด Lmax (m) <input type="number" id="pL" step="0.5" value="5.0"></label>
+    <label>ช่องเปิดกว้างสุด (m) <input type="number" id="pO" step="0.1" value="3.5"></label>
+    <label>fc' (ksc) <input type="number" id="pFc" value="240"></label>
+    <label>fy (ksc) <input type="number" id="pFy" value="4000"></label>
+    <label>LL พื้น (kg/m²) <input type="number" id="pLL" value="200"></label>
+    <label>q_a ดิน (t/m²) <input type="number" id="pQa" value="10"></label>
+    <label>หลังคา <select id="pR"><option value="0">โครงเหล็ก + เมทัลชีท</option><option value="1">พื้น คสล. (ดาดฟ้า)</option></select></label>
+  </div>
+  <div class="row" style="margin-top:12px"><button class="pri" id="run" disabled>▶ Run Pipeline ทั้งหมด</button><span class="note" id="fname">ยังไม่ได้เลือกไฟล์</span></div>
+  <div class="log" id="log" style="margin-top:10px"></div>
+</section>
+
+<section id="sec-an">
+  <h2>② วิเคราะห์แบบ <small>แตะที่เส้นผนังเพื่อลบ (human checkpoint) แล้วระบบจะคำนวณใหม่ทันที</small></h2>
+  <div class="legend"><span><i style="background:#e11d48"></i>ผนัง</span><span><i style="background:#1d6fd6"></i>หน้าต่าง</span><span><i style="background:#16a34a"></i>ประตู</span><span><i style="background:#a21caf;height:10px;width:10px"></i>เสา</span><span><i style="background:#f59e0b"></i>คานกริดภายใน</span></div>
+  <canvas id="c2d" width="900" height="600"></canvas>
+  <div class="row" style="margin-top:8px"><button id="undo" disabled>↶ คืนผนังที่ลบ</button><span class="note" id="delnote"></span></div>
+  <div class="cards" id="cards" style="margin-top:10px"></div>
+</section>
+
+<section id="sec-m3">
+  <h2>④ โมเดล 3D <small>ลากหมุน · 2 นิ้วซูม</small></h2>
+  <div class="row" style="margin-bottom:8px">
+    <label style="flex-direction:row;gap:4px;align-items:center"><input type="checkbox" id="lA" checked style="width:auto">สถาปัตย์ (ผนัง/ช่องเปิด)</label>
+    <label style="flex-direction:row;gap:4px;align-items:center"><input type="checkbox" id="lS" checked style="width:auto">โครงสร้าง (เสา/คาน/พื้น)</label>
+    <label style="flex-direction:row;gap:4px;align-items:center"><input type="checkbox" id="lF" checked style="width:auto">ฐานราก</label></div>
+  <div id="v3d"></div>
+</section>
+
+<section id="sec-st">
+  <h2>③ รายการคำนวณโครงสร้างเบื้องต้น <small>ACI 318-19 · แทนค่าทุกตัวแปร · ใช้กำหนดขนาดเบื้องต้นเท่านั้น</small></h2>
+  <div id="sheets"></div>
+</section>
+
+<section id="sec-bq">
+  <h2>⑤–⑥ ถอดแบบ (QTO) + BOQ <small>แก้ราคาต่อหน่วยในตารางได้ · ราคาเริ่มต้นเป็นค่าประมาณ ต้องปรับตามราคาตลาดจริง</small></h2>
+  <div class="row" style="margin-bottom:8px"><button id="copy">📋 คัดลอก BOQ (วางใน Excel ได้)</button><button id="csv">⬇ CSV</button></div>
+  <div class="tbl"><table id="boq"></table></div>
+  <textarea id="tsv" style="display:none;margin-top:8px" readonly></textarea>
+</section>
+
+<section>
+  <h2>Skill ที่ร้อยเป็น pipeline <small>หลักการจาก GitHub → เขียนใหม่เป็น JS ในเบราว์เซอร์</small></h2>
+  <div class="tbl"><table>
+    <tr><th>ขั้น</th><th>Skill ต้นทาง (GitHub)</th><th>ทำอะไรในแอปนี้</th></tr>
+    <tr><td>②</td><td>DDC image-to-data, drawing-analyzer, pdf-to-structured, cad-to-data · FloorplanToBlender3d</td><td>adaptive threshold → morphological opening → แยกผนังแนวนอน/ตั้ง → centerline (LSQ) → ช่องเปิด/ห้อง</td></tr>
+    <tr><td>③</td><td>(เขียนเพิ่มตาม ACI 318-19)</td><td>วางเสาที่มุม/จุดตัด + ช่วง ≤ Lmax, คานตามแนวผนัง, พื้น/คาน/เสา/ฐานราก + แทนค่า</td></tr>
+    <tr><td>⑤</td><td>DDC qto-report, cwicr-takeoff-helper, bim-qto</td><td>ปริมาตรคอนกรีต เหล็ก (kg/m³) ไม้แบบ ผนัง ฉาบ สี พื้น ฝ้า ประตู หน้าต่าง</td></tr>
+    <tr><td>⑥</td><td>Thai BOQ skill (5 หมวด วัสดุ/ค่าแรง) · DDC estimate-builder, auto-estimate-generator</td><td>BOQ ไทย คอลัมน์ ค่าวัสดุ/ค่าแรง/รวม</td></tr>
+    <tr><td>ทั้งหมด</td><td>DDC ai-agent-orchestration, multi-agent-estimation</td><td>รันต่อเนื่องปุ่มเดียว + checkpoint ให้วิศวกรแก้ผนังแล้วคำนวณใหม่</td></tr>
+  </table></div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+/*__ENGINE__*/
+</script>
+<script>
+const SAMPLES = /*__SAMPLES__*/;
+/* ============================ UI LAYER ============================ */
+const $ = id => document.getElementById(id); const F = Engine.fmt;
+const ST = { src: null, raw: null, walls: null, deleted: [], model: null, P: null, prices: { ...Engine.PRICES }, boq: null };
+function log(msg, cls = '') { const d = document.createElement('div'); d.className = cls; d.textContent = msg; $('log').appendChild(d); $('log').scrollTop = 1e9; }
+function chip(s, st) { const c = document.querySelector(`.chip[data-s="${s}"]`); if (c) c.className = 'chip ' + st; }
+function toast(t) { const e = $('toast'); e.textContent = t; e.style.display = 'block'; setTimeout(() => e.style.display = 'none', 2200); }
+document.querySelectorAll('.chip').forEach(c => c.onclick = () => { const m = { in: 'sec-in', an: 'sec-an', st: 'sec-st', m3: 'sec-m3', qt: 'sec-bq', bq: 'sec-bq' }; $(m[c.dataset.s]).scrollIntoView({ behavior: 'smooth' }); });
+
+function params() { const v = id => parseFloat($(id).value);
+  return { ...Engine.DEFAULTS, floors: Math.max(1, Math.round(v('pN'))), Hs: v('pH'), Lmax: v('pL'), maxOpen: v('pO'), fc: v('pFc'), fy: v('pFy'), LL: v('pLL'), qa: v('pQa'), roofRC: $('pR').value === '1' }; }
+
+/* ---------- input ---------- */
+async function loadImageURL(url) { const im = new Image(); im.src = url; await im.decode(); return im; }
+function imgToData(im, maxSide = 1200) { const s = Math.min(1, maxSide / Math.max(im.naturalWidth || im.width, im.naturalHeight || im.height));
+  const w = Math.round((im.naturalWidth || im.width) * s), h = Math.round((im.naturalHeight || im.height) * s); const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, w, h); cx.drawImage(im, 0, 0, w, h); return { w, h, data: cx.getImageData(0, 0, w, h).data, canvas: cv }; }
+async function pdfToData(buf) { const pdf = await pdfjsLib.getDocument({ data: buf }).promise; const pg = await pdf.getPage(1); const vp0 = pg.getViewport({ scale: 1 });
+  const sc = 1600 / Math.max(vp0.width, vp0.height); const vp = pg.getViewport({ scale: sc }); const cv = document.createElement('canvas'); cv.width = vp.width; cv.height = vp.height;
+  const cx = cv.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, cv.width, cv.height); await pg.render({ canvasContext: cx, viewport: vp }).promise; log(`PDF: ${pdf.numPages} หน้า → ใช้หน้า 1 (${Math.round(vp.width)}×${Math.round(vp.height)} px)`); return imgToData(cv); }
+async function setSource(kind, payload, name) { ST.src = { kind, payload, name }; ST.deleted = []; $('fname').textContent = name; $('run').disabled = false; chip('in', 'done'); }
+$('file').onchange = e => handleFile(e.target.files[0]);
+$('drop').ondragover = e => { e.preventDefault(); }; $('drop').ondrop = e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); };
+async function handleFile(f) { if (!f) return; const ext = f.name.split('.').pop().toLowerCase(); $('log').innerHTML = '';
+  try {
+    if (ext === 'dwg') { log('DWG เป็นไฟล์ไบนารีปิด — กรุณาแปลงเป็น DXF ก่อน (ODA File Converter / AutoCAD SAVEAS DXF) แล้วอัปโหลดใหม่', 'e'); return; }
+    if (ext === 'dxf') return setSource('dxf', await f.text(), f.name);
+    if (ext === 'pdf') return setSource('raster', await pdfToData(await f.arrayBuffer()), f.name);
+    const url = URL.createObjectURL(f); return setSource('raster', imgToData(await loadImageURL(url)), f.name);
+  } catch (err) { log('อ่านไฟล์ไม่สำเร็จ: ' + err.message, 'e'); } }
+document.querySelectorAll('[data-sample]').forEach(b => b.onclick = async () => { const s = SAMPLES[b.dataset.sample]; $('log').innerHTML = '';
+  for (const [k, v] of Object.entries(s.preset)) $(k).value = v;
+  if (s.kind === 'dxf') await setSource('dxf', s.data, s.name); else await setSource('raster', imgToData(await loadImageURL(s.data)), s.name);
+  log(`ตัวอย่าง: ${s.name} — ที่มา ${s.src}`); run(); });
+
+/* ---------- pipeline ---------- */
+$('run').onclick = () => { ST.deleted = []; run(); };
+$('undo').onclick = () => { ST.deleted.pop(); run(true); };
+async function run(keepLog) {
+  if (!ST.src) return; if (!keepLog) $('log').innerHTML = ''; const t0 = performance.now(); const P = params(); ST.P = P;
+  try {
+    chip('an', 'run'); await tick();
+    if (!keepLog || !ST.raw || ST.raw.src !== ST.src) {
+      if (ST.src.kind === 'raster') { const img = ST.src.payload; const r = Engine.analyzeRaster(img);
+        log(`[image-to-data / drawing-analyzer] ${img.w}×${img.h}px · noise kernel k=${r.k}px · ความหนาเส้น p50=${r.tP50}px · ความยาวขั้นต่ำ ${r.minLen}px → ${r.segs.length} ส่วนผนัง`, 's');
+        let x0 = 1e9, x1 = -1e9; for (const s of r.segs) { x0 = Math.min(x0, s.x1 - s.t / 2, s.x2 - s.t / 2); x1 = Math.max(x1, s.x1 + s.t / 2, s.x2 + s.t / 2); }
+        const sPx = P.overall = parseFloat($('pW').value) / Math.max(1, x1 - x0); log(`มาตราส่วน: กว้าง ${$('pW').value} m / ${Math.round(x1 - x0)} px = ${F(sPx * 1000, 2)} mm/px`);
+        ST.raw = { src: ST.src, r, sPx, walls: r.segs.map(s => ({ x1: s.x1 * sPx, y1: s.y1 * sPx, x2: s.x2 * sPx, y2: s.y2 * sPx, t: Math.max(0.07, s.t * sPx) })) };
+      } else { const d = Engine.parseDXF(ST.src.payload); const wl = d.layers.filter(l => /wall|ผนัง/i.test(l)); const filt = wl.length ? (l => wl.includes(l)) : null;
+        const segs = Engine.dxfSegments(d, filt); const u = Engine.dxfUnitScale(d, segs, $('pU').value); const t = parseFloat($('pT').value);
+        log(`[cad-to-data] DXF layers: ${d.layers.join(', ')} → ใช้ ${wl.length ? wl.join(', ') : 'ทุก layer'} · ${segs.length} เส้น · ${u.note}`, 's');
+        const doors = Engine.dxfSegments(d, l => /door|ประตู/i.test(l)).map(s => ({ x: (s.x1 + s.x2) / 2 * u.s, y: -(s.y1 + s.y2) / 2 * u.s }));
+        const wins = Engine.dxfSegments(d, l => /win|หน้าต่าง/i.test(l)).map(s => ({ x: (s.x1 + s.x2) / 2 * u.s, y: -(s.y1 + s.y2) / 2 * u.s }));
+        ST.raw = { src: ST.src, dxf: d, doors, wins, walls: segs.map(s => ({ x1: s.x1 * u.s, y1: -s.y1 * u.s, x2: s.x2 * u.s, y2: -s.y2 * u.s, t })) }; }
+    }
+    const R = ST.raw; const walls = R.walls.filter(w => !ST.deleted.some(d => d.has(w)));
+    const near = (pts, o) => pts.some(p => Math.hypot(p.x - (o.x1 + o.x2) / 2, p.y - (o.y1 + o.y2) / 2) < Math.max(1.0, o.w));
+    const classify = R.r ? (o => Engine.bandDarkRatio(R.r.dark, R.r.w, R.r.h, o, R.sPx) > 0.12 ? 'window' : 'door')
+      : (o, l) => near(R.doors, o) ? 'door' : near(R.wins, o) ? 'window' : (l.ext ? 'window' : 'door');
+    const m = Engine.buildModel(walls, P, classify); ST.model = m; m.log.forEach(x => log('  ' + x));
+    chip('an', 'done'); chip('st', 'run'); await tick(); draw2D(); cards(); sheets(); chip('st', 'done');
+    chip('m3', 'run'); await tick(); try { build3D(); chip('m3', 'done'); } catch (e) { log('3D: ' + e.message, 'w'); }
+    chip('qt', 'done'); renderBOQ(); chip('bq', 'done');
+    log(`✔ Pipeline เสร็จใน ${F((performance.now() - t0) / 1000, 2)} s`, 's');
+  } catch (err) { log('ผิดพลาด: ' + err.message, 'e'); console.error(err); }
+}
+const tick = () => new Promise(r => setTimeout(r, 0));
+
+/* ---------- 2D overlay + checkpoint ---------- */
+let VIEW = null;
+function draw2D() { const m = ST.model, cv = $('c2d'), cx = cv.getContext('2d'); const R = ST.raw;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const l of m.lines) { x0 = Math.min(x0, l.x1, l.x2); x1 = Math.max(x1, l.x1, l.x2); y0 = Math.min(y0, l.y1, l.y2); y1 = Math.max(y1, l.y1, l.y2); }
+  if (R.r) { x0 = 0; y0 = 0; x1 = R.r.w * R.sPx; y1 = R.r.h * R.sPx; } else { const p = (x1 - x0) * 0.05; x0 -= p; y0 -= p; x1 += p; y1 += p; }
+  const W = 1000, s = W / (x1 - x0), H = Math.round((y1 - y0) * s); cv.width = W; cv.height = H; VIEW = { x0, y0, s };
+  cx.fillStyle = '#fff'; cx.fillRect(0, 0, W, H);
+  if (R.r) { cx.globalAlpha = 0.35; cx.drawImage(R.src.payload.canvas, 0, 0, W, H); cx.globalAlpha = 1; }
+  const T = (x, y) => [(x - x0) * s, (y - y0) * s];
+  for (const r of m.G.rooms) { const [a, b] = T(r.cx, r.cy); cx.fillStyle = 'rgba(245,158,11,.9)'; cx.font = '600 ' + Math.max(13, Math.round(Math.max(W, H) / 55)) + 'px IBM Plex Mono'; cx.textAlign = 'center'; cx.fillText(F(r.area, 1) + ' m²', a, b); }
+  cx.strokeStyle = '#f59e0b'; cx.lineWidth = 1.5; cx.setLineDash([6, 4]); for (const b of m.fr.beams.filter(b => b.grid)) { cx.beginPath(); cx.moveTo(...T(b.x1, b.y1)); cx.lineTo(...T(b.x2, b.y2)); cx.stroke(); } cx.setLineDash([]);
+  for (const l of m.lines) { cx.lineCap = 'butt';
+    for (const p of l.pieces) { cx.strokeStyle = '#e11d48'; cx.lineWidth = Math.max(3, l.t * s); cx.globalAlpha = .75; cx.beginPath(); cx.moveTo(...T(p.x1, p.y1)); cx.lineTo(...T(p.x2, p.y2)); cx.stroke(); }
+    for (const o of l.openings) { cx.strokeStyle = o.type === 'window' ? '#1d6fd6' : '#16a34a'; cx.lineWidth = Math.max(3, l.t * s * 0.7); cx.globalAlpha = .9; cx.beginPath(); cx.moveTo(...T(o.x1, o.y1)); cx.lineTo(...T(o.x2, o.y2)); cx.stroke(); } }
+  cx.globalAlpha = 1; const bc = Math.max(6, m.D.col.b / 100 * s); cx.fillStyle = '#a21caf'; for (const c of m.fr.cols) { const [a, b] = T(c.x, c.y); cx.fillRect(a - bc / 2, b - bc / 2, bc, bc); }
+  $('delnote').textContent = ST.deleted.length ? `ลบผนังไปแล้ว ${ST.deleted.length} ครั้ง` : ''; $('undo').disabled = !ST.deleted.length; }
+$('c2d').onclick = e => { if (!ST.model || !VIEW) return; const cv = $('c2d'), rc = cv.getBoundingClientRect(); const px = (e.clientX - rc.left) * cv.width / rc.width, py = (e.clientY - rc.top) * cv.height / rc.height;
+  const p = { x: VIEW.x0 + px / VIEW.s, y: VIEW.y0 + py / VIEW.s }; let best = null, bd = 1e9;
+  for (const l of ST.model.lines) { const d = dSeg(p, l); if (d < bd) { bd = d; best = l; } }
+  if (!best || bd * VIEW.s > 18) return; const del = new Set(ST.raw.walls.filter(w => { const m = { x: (w.x1 + w.x2) / 2, y: (w.y1 + w.y2) / 2 }; return dSeg(m, best) < Math.max(best.t, w.t) + 0.05 && dSeg({ x: w.x1, y: w.y1 }, best) < best.t + 0.3 && dSeg({ x: w.x2, y: w.y2 }, best) < best.t + 0.3; }));
+  if (!del.size) return; ST.deleted.push(del); log(`checkpoint: ลบผนัง ${F(Engine.len(best))} m → คำนวณใหม่`, 'w'); run(true); };
+function dSeg(p, s) { const dx = s.x2 - s.x1, dy = s.y2 - s.y1, L2 = dx * dx + dy * dy || 1; const t = Math.max(0, Math.min(1, ((p.x - s.x1) * dx + (p.y - s.y1) * dy) / L2)); return Math.hypot(s.x1 + dx * t - p.x, s.y1 + dy * t - p.y); }
+
+function cards() { const m = ST.model, q = m.Q, P = ST.P; const conc = q.items.filter(i => i.key.startsWith('c_')).reduce((s, i) => s + i.qty, 0); const rb = q.items.find(i => i.key === 'rebar').qty;
+  const c = [[F(q.stats.foot, 1), 'm² footprint'], [F(q.stats.foot * P.floors, 1), `m² พื้นที่ใช้สอยรวม (${P.floors} ชั้น)`], [m.G.rooms.length, 'ห้อง'], [q.stats.doors + ' / ' + q.stats.windows, 'ประตู / หน้าต่าง ต่อชั้น'],
+    [m.fr.cols.length, `เสา ${m.D.col.b}×${m.D.col.b} cm`], [`${m.D.beam.b}×${m.D.beam.h}`, 'คาน (cm)'], [m.D.slab.h, 'พื้นหนา (cm)'], [F(conc, 1), 'm³ คอนกรีตรวม'], [F(rb / 1000, 2), 'ตัน เหล็กเสริม'], [F(rb / Math.max(conc, 1e-9), 0), 'kg/m³ เหล็ก/คอนกรีต']];
+  $('cards').innerHTML = c.map(([b, s]) => `<div class="card"><b>${b}</b><span>${s}</span></div>`).join(''); }
+function sheets() { $('sheets').innerHTML = ST.model.D.sheets.map(s => `<div class="sheet"><h3>${s.title}</h3><div>${s.lines.map(x => esc(x).replace(/PASS ✔/g, '<span class="pass">PASS ✔</span>').replace(/FAIL ✘/g, '<span class="fail">FAIL ✘</span>')).join('\n')}</div></div>`).join('')
+  + `<p class="note">สมมติฐาน: SDL ${ST.P.SDL}, partition ${ST.P.partition}, ผนัง ${ST.P.wallW} kg/m², หลังคา DL/LL ${ST.P.roofDL}/${ST.P.roofLL} kg/m², Df ${ST.P.Df} m, ρ คาน ${ST.P.rhoBeam}, ρ เสา ${ST.P.rhoCol}. ยังไม่รวมแรงลม/แผ่นดินไหว — ต้องวิเคราะห์โครงสร้างจริง (ETABS/STAAD) ก่อนออกแบบขั้นสุดท้าย</p>`; }
+const esc = s => String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+/* ---------- BOQ ---------- */
+function renderBOQ() { const B = ST.boq = Engine.boq(ST.model.Q, ST.prices); const P = ST.P;
+  let h = `<tr><th>ลำดับ</th><th>รายการ</th><th class="n">ปริมาณ</th><th>หน่วย</th><th class="n">ค่าวัสดุ/หน่วย</th><th class="n">รวมค่าวัสดุ</th><th class="n">ค่าแรง/หน่วย</th><th class="n">รวมค่าแรง</th><th class="n">รวม (บาท)</th><th>หมายเหตุ</th></tr>`;
+  for (const c of Object.keys(B.CATS)) { h += `<tr class="cat"><td>${c}</td><td colspan="9">${B.CATS[c]}</td></tr>`;
+    for (const r of B.rows.filter(r => r.cat === c)) h += `<tr><td>${r.no}</td><td>${esc(r.desc)}</td><td class="n">${F(r.qty)}</td><td>${r.unit}</td><td class="n"><input type="number" data-k="${r.key}" data-i="0" value="${r.mu}"></td><td class="n">${F(r.mt)}</td><td class="n"><input type="number" data-k="${r.key}" data-i="1" value="${r.lu}"></td><td class="n">${F(r.lt)}</td><td class="n">${F(r.tot)}</td><td class="note">${esc(r.note)}</td></tr>`;
+    h += `<tr class="sub"><td></td><td colspan="7">รวม${B.CATS[c]}</td><td class="n">${F(B.sub[c])}</td><td></td></tr>`; }
+  const area = ST.model.Q.stats.foot * P.floors;
+  h += `<tr class="grand"><td></td><td colspan="7">รวมค่าวัสดุและค่าแรง (ยังไม่รวม Factor F / VAT)</td><td class="n">${F(B.grand)}</td><td class="note">${F(B.grand / Math.max(area, 1e-9), 0)} บาท/m²</td></tr>`;
+  $('boq').innerHTML = h; $('boq').querySelectorAll('input').forEach(i => i.onchange = () => { const p = ST.prices[i.dataset.k] = [...(ST.prices[i.dataset.k] || [0, 0])]; p[+i.dataset.i] = parseFloat(i.value) || 0; renderBOQ(); }); }
+function boqTSV(sep = '\t') { const B = ST.boq; const q = v => sep === ',' ? `"${String(v).replace(/"/g, '""')}"` : v; const L = [['ลำดับ', 'รายการ', 'ปริมาณ', 'หน่วย', 'ค่าวัสดุ/หน่วย', 'รวมค่าวัสดุ', 'ค่าแรง/หน่วย', 'รวมค่าแรง', 'รวม', 'หมายเหตุ'].map(q).join(sep)];
+  for (const c of Object.keys(B.CATS)) { L.push([c, B.CATS[c]].map(q).join(sep)); for (const r of B.rows.filter(r => r.cat === c)) L.push([r.no, r.desc, r.qty, r.unit, r.mu, r.mt.toFixed(2), r.lu, r.lt.toFixed(2), r.tot.toFixed(2), r.note].map(q).join(sep)); L.push(['', 'รวม' + B.CATS[c], '', '', '', '', '', '', B.sub[c].toFixed(2)].map(q).join(sep)); }
+  L.push(['', 'รวมทั้งสิ้น', '', '', '', '', '', '', B.grand.toFixed(2)].map(q).join(sep)); return L.join('\n'); }
+$('copy').onclick = async () => { if (!ST.boq) return; const t = boqTSV(); try { await navigator.clipboard.writeText(t); toast('คัดลอก BOQ แล้ว — วางใน Excel ได้เลย'); } catch (e) { $('tsv').style.display = 'block'; $('tsv').value = t; $('tsv').select(); toast('คัดลอกอัตโนมัติไม่ได้ — กด Copy จากกล่องด้านล่าง'); } };
+$('csv').onclick = async () => { if (!ST.boq) return; const csv = '\ufeff' + boqTSV(',');
+  try { const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+    if (dl) { await dl.save({ filename: 'Bobo_BOQ.csv', data: csv }); toast('บันทึก CSV แล้ว'); return; } } catch (e) { toast('ยกเลิก/บันทึกไม่ได้ — คัดลอกจากกล่องด้านล่างแทน'); }
+  $('tsv').style.display = 'block'; $('tsv').value = csv.slice(1); };
+
+/* ---------- 3D (three.js r128) ---------- */
+let R3 = null;
+function init3D() { if (R3) return R3; if (!window.THREE) throw new Error('three.js โหลดไม่สำเร็จ'); const el = $('v3d'); const rn = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  rn.setPixelRatio(Math.min(2, devicePixelRatio)); rn.setSize(el.clientWidth, el.clientHeight); el.appendChild(rn.domElement);
+  const sc = new THREE.Scene(); sc.background = new THREE.Color(0x0f1418); const cam = new THREE.PerspectiveCamera(45, el.clientWidth / el.clientHeight, 0.1, 5000);
+  sc.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.85)); const dl = new THREE.DirectionalLight(0xffffff, 0.7); dl.position.set(30, 60, 20); sc.add(dl);
+  const ctl = new THREE.OrbitControls(cam, rn.domElement); ctl.enableDamping = true; const groups = { A: new THREE.Group(), S: new THREE.Group(), F: new THREE.Group() }; Object.values(groups).forEach(g => sc.add(g));
+  (function loop() { requestAnimationFrame(loop); ctl.update(); rn.render(sc, cam); })();
+  addEventListener('resize', () => { rn.setSize(el.clientWidth, el.clientHeight); cam.aspect = el.clientWidth / el.clientHeight; cam.updateProjectionMatrix(); });
+  ['lA', 'lS', 'lF'].forEach(id => $(id).onchange = () => groups[id[1]].visible = $(id).checked);
+  return R3 = { rn, sc, cam, ctl, groups }; }
+const MAT = {}; const mat = (c, o = 1) => MAT[c + o] || (MAT[c + o] = new THREE.MeshLambertMaterial({ color: c, transparent: o < 1, opacity: o }));
+function boxAlong(g, x1, y1, x2, y2, w, z0, h, m) { const L = Math.hypot(x2 - x1, y2 - y1); if (L < 1e-3 || h <= 0) return; const b = new THREE.Mesh(new THREE.BoxGeometry(L, h, w), m);
+  b.position.set((x1 + x2) / 2, z0 + h / 2, (y1 + y2) / 2); b.rotation.y = -Math.atan2(y2 - y1, x2 - x1); g.add(b); }
+function build3D() { const { groups, cam, ctl } = init3D(); Object.values(groups).forEach(g => { while (g.children.length) { const c = g.children.pop(); c.geometry.dispose(); } });
+  const m = ST.model, P = ST.P, D = m.D, N = P.floors, Hs = P.Hs, hb = D.beam.h / 100, bb = D.beam.b / 100, bc = D.col.b / 100, hs = D.slab.h / 100;
+  const cWall = mat(0xe9dcc4), cGlass = mat(0x60a5fa, 0.45), cDoor = mat(0x8b5a2b), cCol = mat(0x94a3b8), cBeam = mat(0x7c8da3), cSlab = mat(0xcbd5e1, 0.85), cFoot = mat(0xa16207), cGround = mat(0x6b7280, 0.5);
+  for (let i = 0; i < N; i++) { const z = i * Hs, hw = Hs - hb;
+    for (const l of m.lines) { for (const p of l.pieces) boxAlong(groups.A, p.x1, p.y1, p.x2, p.y2, Math.max(0.1, l.t), z, hw, cWall);
+      for (const o of l.openings) { const t = Math.max(0.1, l.t);
+        if (o.type === 'window') { boxAlong(groups.A, o.x1, o.y1, o.x2, o.y2, t, z, 0.9, cWall); boxAlong(groups.A, o.x1, o.y1, o.x2, o.y2, 0.04, z + 0.9, P.winH, cGlass); boxAlong(groups.A, o.x1, o.y1, o.x2, o.y2, t, z + 0.9 + P.winH, hw - 0.9 - P.winH, cWall); }
+        else { boxAlong(groups.A, o.x1, o.y1, o.x2, o.y2, 0.05, z, P.doorH, cDoor); boxAlong(groups.A, o.x1, o.y1, o.x2, o.y2, t, z + P.doorH, hw - P.doorH, cWall); } } } }
+  for (let lv = 0; lv <= N; lv++) for (const b of m.fr.beams) { if (lv === 0 && b.grid) continue; boxAlong(groups.S, b.x1, b.y1, b.x2, b.y2, bb, lv * Hs - hb, hb, cBeam); }
+  for (const c of m.fr.cols) { const h = Hs * N + P.Df - c.tf; const k = new THREE.Mesh(new THREE.BoxGeometry(bc, h, bc), cCol); k.position.set(c.x, -P.Df + c.tf + h / 2, c.y); groups.S.add(k);
+    const f = new THREE.Mesh(new THREE.BoxGeometry(c.B, c.tf, c.B), cFoot); f.position.set(c.x, -P.Df + c.tf / 2, c.y); groups.F.add(f); }
+  // slabs from footprint grid (row runs merged vertically)
+  const G = m.G, st = Math.max(1, Math.round(0.25 / G.c)); const rects = []; let prev = new Map();
+  for (let j = 0; j < G.H; j += st) { const cur = new Map(); let s = -1;
+    for (let i = 0; i <= G.W; i += st) { const inn = i < G.W && G.g[j * G.W + i] !== 2; if (inn && s < 0) s = i; if (!inn && s >= 0) { const key = s + ':' + i; const r = prev.get(key) || { i0: s, i1: i, j0: j, j1: j }; r.j1 = j + st; cur.set(key, r); if (!prev.has(key)) rects.push(r); s = -1; } }
+    prev = cur; }
+  const levels = []; for (let lv = 1; lv < N; lv++) levels.push(lv); if (P.roofRC) levels.push(N);
+  for (const r of rects) { const x = G.xmin + r.i0 * G.c, y = G.ymin + r.j0 * G.c, w = (r.i1 - r.i0) * G.c, d = (r.j1 - r.j0) * G.c;
+    const g0 = new THREE.Mesh(new THREE.BoxGeometry(w, 0.1, d), cGround); g0.position.set(x + w / 2, -0.05, y + d / 2); groups.S.add(g0);
+    for (const lv of levels) { const s = new THREE.Mesh(new THREE.BoxGeometry(w, hs, d), cSlab); s.position.set(x + w / 2, lv * Hs - hs / 2, y + d / 2); groups.S.add(s); } }
+  // fit camera
+  const bx = new THREE.Box3().setFromObject(groups.S); const c = bx.getCenter(new THREE.Vector3()), sz = bx.getSize(new THREE.Vector3()).length();
+  ctl.target.copy(c); cam.position.set(c.x + sz * 0.7, c.y + sz * 0.65, c.z + sz * 0.95); cam.near = sz / 500; cam.far = sz * 20; cam.updateProjectionMatrix(); }
+</script>
+</body>
+</html>
